@@ -1,0 +1,55 @@
+# playbooks/backup_cisco_switches.yml
+---
+- name: Backup Cisco Catalyst configs to s1repo01
+  hosts: device_roles_core-access-switch
+  gather_facts: no
+  connection: network_cli
+
+  collections:
+    - cisco.ios
+
+  vars:
+    backup_root: "/repo/bkup/sw"
+
+  tasks:
+    - name: Get device facts (for hostname, model, etc.)
+      cisco.ios.ios_facts:
+      register: iosfacts
+
+    - name: Capture running configuration
+      cisco.ios.ios_command:
+        commands:
+          - show running-config
+      register: running_cfg
+
+    - name: Build timestamped filename
+      ansible.builtin.set_fact:
+        backup_dir:  "{{ backup_root }}/{{ inventory_hostname }}"
+        backup_file: "{{ inventory_hostname }}_{{ ansible_date_time.iso8601_basic_short }}.cfg"
+
+    - name: Ensure target directory exists on repo01
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: "0750"
+      delegate_to: s1repo01
+      run_once: false
+
+    - name: Write running-config to repo01
+      ansible.builtin.copy:
+        content: "{{ running_cfg.stdout[0] }}"
+        dest: "{{ backup_dir }}/{{ backup_file }}"
+        mode: "0640"
+      delegate_to: s1repo01
+
+    - name: Save a small metadata blob with details of switches
+      ansible.builtin.copy:
+        content: |
+          hostname: {{ iosfacts.ansible_facts.net_hostname | default(inventory_hostname) }}
+          model: {{ iosfacts.ansible_facts.net_model | default('unknown') }}
+          version: {{ iosfacts.ansible_facts.net_version | default('unknown') }}
+          serial: {{ iosfacts.ansible_facts.net_serialnum | default('unknown') }}
+          collected_at: {{ ansible_date_time.iso8601 }}
+        dest: "{{ backup_dir }}/{{ backup_file | regex_replace('\\.cfg$', '.yml') }}"
+        mode: "0640"
+      delegate_to: s1repo01
