@@ -12,6 +12,12 @@
     backup_root: "/repo/bkup/sw"
 
   tasks:
+    - name: Get current date/time from controller
+      ansible.builtin.setup:
+        filter: ansible_date_time
+      delegate_to: localhost
+      run_once: true
+
     - name: Get device facts (for hostname, model, etc.)
       cisco.ios.ios_facts:
       register: iosfacts
