@@ -40,6 +40,9 @@
         mode: "0750"
       delegate_to: s1repo01
       run_once: false
+      vars:
+        ansible_connection: ssh
+        ansible_network_os: ""
 
     - name: Write running-config to repo01
       ansible.builtin.copy:
