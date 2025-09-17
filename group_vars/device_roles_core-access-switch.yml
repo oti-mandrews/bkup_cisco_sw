@@ -5,3 +5,4 @@ ansible_become_method: enable
 ansible_timeout: 60
 ansible_command_timeout: 60
 ansible_persistent_command_timeout: 60
+ansible_user: svc-ansible
